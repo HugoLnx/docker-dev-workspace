@@ -1,7 +1,7 @@
 # Docker Dev Workspace
 ## Intro
-Simple repository to make easy for me to have a dev linux environment running in my
-windows machine.
+Simple repository to make easy for me to have a dev linux environment running in
+my windows machine (throught Docker Desktop).
 
 ## Pre-requisites
 - git bash
@@ -23,7 +23,7 @@ windows machine.
 * Run `./build.sh`
 * Add the scripts at `bin/` to your PATH
 
-## How to use
+## How to use (run the commands on git-bash)
 ```
 # Enter where you want to start a workspace...
 cd /my/super/project/
