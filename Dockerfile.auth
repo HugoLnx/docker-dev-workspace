@@ -1,0 +1,9 @@
+FROM dev-base
+
+RUN mkdir -p ~/.ssh/
+
+# Copy the ssh key and make sure it has the right permissions
+COPY credentials/ssh/id_rsa /root/.ssh/id_rsa
+RUN chmod 600 ~/.ssh/id_rsa
+COPY credentials/ssh/id_rsa.pub /root/.ssh/id_rsa.pub
+RUN chmod 644 ~/.ssh/id_rsa.pub

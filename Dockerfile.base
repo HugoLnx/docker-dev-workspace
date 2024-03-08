@@ -1,0 +1,191 @@
+FROM buildpack-deps:bookworm
+
+# References:
+# 1. Dockerfile with asdf + docker install bits
+# https://gist.github.com/BrutalSimplicity/882af1d343b7530fc7e005284523d38d
+# 2. asdf plugins
+# 3. python, node, and ruby official docker images
+
+ENV ASDF_VERSION 0.14.0
+ENV NODE_VERSION 21.6.2
+ENV PYTHON_VERSION 3.12.2
+ENV RUBY_VERSION 3.3.0
+
+ENV CMAKE_VERSION 3.28.3
+ENV GCLOUD_VERSION 467.0.0
+ENV KUBECTL_VERSION 1.29.2
+ENV LUA_VERSION 5.4.6
+ENV JAVA_VERSION 21.0.2
+ENV JAVA_DISTRIBUTION openjdk-$JAVA_VERSION
+
+ENV LANG C.UTF-8
+
+# Install basic dev packages
+RUN apt-get clean && apt-get update && apt-get -y install --no-install-recommends \
+    apt-utils \
+    openssh-client \
+    git \
+    gnupg2 \
+    dirmngr \
+    iproute2 \
+    procps \
+    lsof \
+    htop \
+    net-tools \
+    psmisc \
+    curl \
+    wget \
+    rsync \
+    ca-certificates \
+    unzip \
+    zip \
+    nano \
+    vim \
+    neovim \
+    less \
+    jq \
+    lsb-release \
+    apt-transport-https \
+    dialog \
+    libc6 \
+    libgcc1 \
+    libkrb5-3 \
+    libgssapi-krb5-2 \
+    libicu[0-9][0-9] \
+    # liblttng-ust0 \
+    libstdc++6 \
+    zlib1g \
+    locales \
+    sudo \
+    ncdu \
+    man-db \
+    strace \
+    manpages \
+    manpages-dev \
+    init-system-helpers \
+    make \
+    build-essential \
+# python runtime dependencies
+    openssl \
+    bzip2 \
+    libreadline8 \
+    sqlite3 \
+    tk \
+    xz-utils \
+    libxml2 \
+    llvm \
+# python build dependencies
+    build-essential \
+    libssl-dev \
+    zlib1g-dev \
+    libbz2-dev \
+    libreadline-dev \
+    libsqlite3-dev \
+    libncursesw5-dev \
+    tk-dev \
+    libxml2-dev \
+    libxmlsec1-dev \
+    libffi-dev \
+    liblzma-dev \
+# from python docker image
+    libbluetooth-dev \
+    uuid-dev \
+# from ruby docker image
+    dpkg-dev \
+    libgdbm-dev \
+# some useful dev utils
+    fd-find \
+    bat \
+    tree \
+    zsh && \
+    ln -s $(which fdfind) /usr/local/bin/fd && \
+    ln -s $(which batcat) /usr/local/bin/bat && \
+    rm -rf /var/lib/apt/lists/*
+
+# ensure we use bash for all RUN commands
+# use -l to use interactive login shell
+# and ensure modifications to bashrc are properly sourced
+SHELL ["/bin/bash", "-lc"]
+
+# install asdf to manage all the thingz!!!
+RUN git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v$ASDF_VERSION && \
+    echo ". $HOME/.asdf/asdf.sh" >> /root/.bashrc && \
+    echo ". $HOME/.asdf/asdf.sh" >> /root/.zshrc
+
+# install direnv
+RUN asdf plugin-add direnv && \
+    asdf direnv setup --shell bash --version latest
+
+# install plugins
+RUN asdf plugin add nodejs && \
+    asdf plugin add python && \
+    asdf plugin add ruby && \
+    asdf plugin add lua https://github.com/Stratus3D/asdf-lua.git && \
+    asdf plugin add java https://github.com/halcyon/asdf-java.git && \
+    asdf plugin add cmake https://github.com/asdf-community/asdf-cmake.git && \
+    asdf plugin add kubectl https://github.com/asdf-community/asdf-kubectl.git && \
+    asdf plugin add gcloud https://github.com/jthegedus/asdf-gcloud
+
+# Create a default gcloud .default-cloud-sdk-components file
+RUN export GCLOUD_DEFAULT_COMPONENTS_PATH=~/.default-cloud-sdk-components && \
+    echo "core" > $GCLOUD_DEFAULT_COMPONENTS_PATH && \
+    echo "alpha" >> $GCLOUD_DEFAULT_COMPONENTS_PATH && \
+    echo "beta" >> $GCLOUD_DEFAULT_COMPONENTS_PATH && \
+    echo "gsutil" >> $GCLOUD_DEFAULT_COMPONENTS_PATH && \
+    echo "bq" >> $GCLOUD_DEFAULT_COMPONENTS_PATH && \
+    echo "cloud-firestore-emulator" >> $GCLOUD_DEFAULT_COMPONENTS_PATH && \
+    echo "pubsub-emulator" >> $GCLOUD_DEFAULT_COMPONENTS_PATH
+
+
+# install python build dependencies since asdf
+# builds from the source
+RUN asdf install python $PYTHON_VERSION && \
+    asdf install nodejs $NODE_VERSION && \
+    asdf install ruby $RUBY_VERSION && \
+    asdf install lua $LUA_VERSION && \
+    asdf install java $JAVA_DISTRIBUTION && \
+    asdf install cmake $CMAKE_VERSION && \
+    asdf install kubectl $KUBECTL_VERSION && \
+    asdf install gcloud $GCLOUD_VERSION
+
+# set global versions
+RUN asdf global python $PYTHON_VERSION && \
+    asdf global nodejs $NODE_VERSION && \
+    asdf global ruby $RUBY_VERSION && \
+    asdf global lua $LUA_VERSION && \
+    asdf global java $JAVA_DISTRIBUTION && \
+    asdf global cmake $CMAKE_VERSION && \
+    asdf global kubectl $KUBECTL_VERSION && \
+    asdf global gcloud $GCLOUD_VERSION
+
+# set JAVA_HOME from plugin
+RUN echo ". ~/.asdf/plugins/java/set-java-home.bash" >> /root/.bashrc && \
+    echo ". ~/.asdf/plugins/java/set-java-home.zsh" >> /root/.zshrc
+
+# upgrade python and node package managers and install nx workspace manager
+RUN pip install --upgrade pip && npm i -g npm@latest && \
+    pip install pipenv==v2021.11.23 && npm i -g yarn@1.22
+
+# install common npm global packages
+RUN npm i -g \
+    firebase-tools \
+    http-server
+
+# install boto3
+RUN pip install boto3
+
+RUN asdf reshim python && \
+    asdf reshim nodejs && \
+    asdf reshim ruby && \
+    asdf reshim lua && \
+    asdf reshim java && \
+    asdf reshim cmake && \
+    asdf reshim kubectl && \
+    asdf reshim gcloud
+
+# set all the things to be sure bash is always used as the default shell
+RUN cd /bin && ln -sf bash sh && chsh -s /bin/bash
+ENV SHELL=bash
+ENV PATH=$PATH:/root/.bin
+WORKDIR /root
+# ENTRYPOINT [ "/bin/bash", "-lc" ]
