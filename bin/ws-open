@@ -7,6 +7,18 @@ fi
 # WORKSPACE_NAME = $1 or $WS_WORKSPACE
 WORKSPACE_NAME=${1:-$WS_WORKSPACE}
 
+# Sample usage: WS_PORT_FORWARDING=8080:80,3000:3000
+# Split ports by comma and build the PORT_FORWARDING_OPT
+if [ -z $WS_PORT_FORWARDING ]; then
+    PORT_FORWARDING_OPT=""
+else
+    PORT_FORWARDING_OPT=""
+    IFS=',' read -ra PORTS <<< "$WS_PORT_FORWARDING"
+    for PORT in "${PORTS[@]}"; do
+        PORT_FORWARDING_OPT="$PORT_FORWARDING_OPT -p $PORT"
+    done
+fi
+
 if [ -z $WORKSPACE_NAME ]; then
     echo "ERROR: Please provide a workspace name"
     echo "Usage: ws-open.sh <workspace-name>"
@@ -17,7 +29,7 @@ docker ps -a | grep $WORKSPACE_NAME > /dev/null
 if [ $? -eq 0 ]; then
     docker start $WORKSPACE_NAME
 else
-    winpty docker run --name $WORKSPACE_NAME -d -v /$PWD/:/root/workspace/ dev
+    winpty docker run --name $WORKSPACE_NAME -d -v /$PWD/:/root/workspace/ $PORT_FORWARDING_OPT dev
 fi
 
 # if no errors

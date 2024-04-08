@@ -1,7 +1,7 @@
 # Docker Dev Workspace
 ## Intro
 Simple repository to make easy for me to have a dev linux environment running in
-my windows machine (throught Docker Desktop).
+my windows machine (through Docker Desktop).
 
 ## Pre-requisites
 - git bash
@@ -45,6 +45,7 @@ ws-rm <workspace-name>
 You can create a `.wsrc` file in your project root:
 ```sh
 export WS_WORKSPACE=my-super-project
+export WS_PORT_FORWARDING=8080:8080,3000:3000
 ```
 
 This way you don't neet to pass the `<workspace-name>` is the commands.
